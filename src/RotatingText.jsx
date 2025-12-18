@@ -8,6 +8,7 @@ import React, {
 } from "react";
 import { motion, AnimatePresence } from "motion/react";
 
+// Tailwind의 cn 헬퍼를 그대로 단순 포트
 function cn(...classes) {
   return classes.filter(Boolean).join(" ");
 }
@@ -15,7 +16,7 @@ function cn(...classes) {
 const RotatingText = forwardRef(
   (
     {
-      texts,
+      texts = [],
       transition = { type: "spring", damping: 25, stiffness: 300 },
       initial = { y: "100%", opacity: 0 },
       animate = { y: 0, opacity: 1 },
@@ -47,7 +48,8 @@ const RotatingText = forwardRef(
     };
 
     const elements = useMemo(() => {
-      const currentText = texts[currentTextIndex];
+      const currentText = texts[currentTextIndex] ?? "";
+
       if (splitBy === "characters") {
         const words = currentText.split(" ");
         return words.map((word, i) => ({
@@ -55,12 +57,14 @@ const RotatingText = forwardRef(
           needsSpace: i !== words.length - 1,
         }));
       }
+
       if (splitBy === "words") {
         return currentText.split(" ").map((word, i, arr) => ({
           characters: [word],
           needsSpace: i !== arr.length - 1,
         }));
       }
+
       if (splitBy === "lines") {
         return currentText.split("\n").map((line, i, arr) => ({
           characters: [line],
@@ -87,6 +91,7 @@ const RotatingText = forwardRef(
           const randomIndex = Math.floor(Math.random() * total);
           return Math.abs(randomIndex - index) * staggerDuration;
         }
+        // number 인 경우
         return Math.abs(staggerFrom - index) * staggerDuration;
       },
       [staggerFrom, staggerDuration]
@@ -101,6 +106,7 @@ const RotatingText = forwardRef(
     );
 
     const next = useCallback(() => {
+      if (!texts.length) return;
       const nextIndex =
         currentTextIndex === texts.length - 1
           ? loop
@@ -110,9 +116,10 @@ const RotatingText = forwardRef(
       if (nextIndex !== currentTextIndex) {
         handleIndexChange(nextIndex);
       }
-    }, [currentTextIndex, texts.length, loop, handleIndexChange]);
+    }, [currentTextIndex, texts, loop, handleIndexChange]);
 
     const previous = useCallback(() => {
+      if (!texts.length) return;
       const prevIndex =
         currentTextIndex === 0
           ? loop
@@ -122,16 +129,17 @@ const RotatingText = forwardRef(
       if (prevIndex !== currentTextIndex) {
         handleIndexChange(prevIndex);
       }
-    }, [currentTextIndex, texts.length, loop, handleIndexChange]);
+    }, [currentTextIndex, texts, loop, handleIndexChange]);
 
     const jumpTo = useCallback(
       (index) => {
+        if (!texts.length) return;
         const validIndex = Math.max(0, Math.min(index, texts.length - 1));
         if (validIndex !== currentTextIndex) {
           handleIndexChange(validIndex);
         }
       },
-      [texts.length, currentTextIndex, handleIndexChange]
+      [texts, currentTextIndex, handleIndexChange]
     );
 
     const reset = useCallback(() => {
@@ -152,22 +160,27 @@ const RotatingText = forwardRef(
     );
 
     useEffect(() => {
-      if (!auto) return;
+      if (!auto || !texts.length) return;
       const intervalId = setInterval(next, rotationInterval);
       return () => clearInterval(intervalId);
-    }, [next, rotationInterval, auto]);
+    }, [next, rotationInterval, auto, texts.length]);
+
+    const totalChars = elements.reduce(
+      (sum, word) => sum + word.characters.length,
+      0
+    );
 
     return (
       <motion.span
         className={cn(
-          "rotating-text flex flex-wrap whitespace-pre-wrap relative",
+          "flex flex-wrap whitespace-pre-wrap relative",
           mainClassName
         )}
         {...rest}
         layout
         transition={transition}
       >
-        <span className="sr-only">{texts[currentTextIndex]}</span>
+        <span className="sr-only">{texts[currentTextIndex] ?? ""}</span>
         <AnimatePresence
           mode={animatePresenceMode}
           initial={animatePresenceInitial}
@@ -186,10 +199,7 @@ const RotatingText = forwardRef(
               const previousCharsCount = array
                 .slice(0, wordIndex)
                 .reduce((sum, word) => sum + word.characters.length, 0);
-              const totalChars = array.reduce(
-                (sum, word) => sum + word.characters.length,
-                0
-              );
+
               return (
                 <span
                   key={wordIndex}
@@ -209,7 +219,7 @@ const RotatingText = forwardRef(
                         ),
                       }}
                       className={cn(
-                        "inline-block about-rotating-char",
+                        "inline-block",
                         elementLevelClassName
                       )}
                     >
